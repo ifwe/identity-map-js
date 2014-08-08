@@ -1,28 +1,35 @@
 Tagged Identity Map
 ===================
 
-An identity map for node.js and the browser.
+An identity map for node.js -- and coming soon, browser support!
 
 Installation
 ------------
 
+    $ npm install tagged-identity-map
+
 Usage
 -----
 
-    // on the server
-    var identityMap = require('tagged-identity-map')('User');
+**On the server**
 
-    user1 = new User({
-        id: 1,
+    // Load an identity map for users
+    var userIdentityMap = require('tagged-identity-map')('User');
+
+    // Create your user instance
+    userA = new User({
+        id: 123,
         name: 'Bob'
     });
-    identityMap.put(1, user);
+    userIdentityMap.put(123, userA);
 
-    var user2 = identityMap.get(1);
-    assert(user1 === user2);
+    var userB = userIdentityMap.get(123);
+    assert(userA === userB);
 
 Auto merge
 ----------
+
+The identity map will automatically merge identities together if the same identity already exists in the map.
 
     var userA = new User({
         id: 123,
@@ -46,10 +53,11 @@ Auto merge
     assert(userC.photo === '//placehold.it/200x200'); // this value wasn't lost in the merge
     assert(userC.email === 'joe@example.com'); // new value from `userB` was merged in.
 
-Integration with your favorite web services
+Integration with your favorite web services is easy by utilizing the `identify()` function. This will automatically set the identity in the map, merge if it necessary, and return the merged identity.
 
     var userIdentityMap = require('tagged-identity-map')('User');
 
+    // Function to get a single user from a web service
     var getUser = function(id) {
         return myUserService.get('/user/' + id)
         .then(function(user) {
@@ -60,6 +68,7 @@ Integration with your favorite web services
         });
     };
 
+    // Function to get multiple users from a web service
     vat getUsers = function(ids) {
         return myUserService.get('/users/' + ids.join(','))
         .then(function(users) {
@@ -73,21 +82,24 @@ Integration with your favorite web services
     };
 
     // Now we can be sure we're dealing with the same instance of user 123
-    // even though two different API calls have returned info for user 123
+    // even though two different API calls have returned info for that user.
     Q.all([
         getUser(123),
         getUsers([123, 456])
     ]).then(function(results) {
+        // extract the user from the results to simplify the assertions below
         var userA = results[0];
         var userB = results[1][0];
+
+        // Yay, both variables reference the same object!
         assert(userA.id === 123); // this object represents user with id 123
         assert(userB.id === 123); // this object also represents user 123
         assert(userA === userB); // both users reference the same JS object in memory
 
+        // Let's try updating one of them to make sure they stay synced...
         assert(userA.name === 'Bob');
         assert(userB.name === 'Bob');
         userA.name = 'Joe'; // update userA's name
         assert(userA.name === 'Joe'); // surely this works...
         assert(userB.name === 'Joe'); // name is synced across references!
     });
-
